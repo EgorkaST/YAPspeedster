@@ -3,7 +3,7 @@ import vlc
 
 class Player:
     def __init__(self):
-        self.instance = vlc.Instance()
+        self.instance = vlc.Instance("--audio-filter=scaletempo")
         self.player = self.instance.media_player_new()
 
     def load(self, file_path: str):
@@ -29,3 +29,7 @@ class Player:
 
     def is_playing(self) -> bool:
         return self.player.get_state() == vlc.State.Playing
+
+    def set_speed_rate(self, rate: float):
+        rate = max(0, min(3.0, rate))
+        self.player.set_rate(rate)

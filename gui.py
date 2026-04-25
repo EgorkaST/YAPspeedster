@@ -10,6 +10,9 @@ class GUI:
         self.root.title("YUP speedster")
         self.root.geometry("500x400")
 
+        # const
+        self._current_speed = 1.0
+
         #player integration
         self.player = Player()
 
@@ -22,17 +25,19 @@ class GUI:
         tk.Button(root, text="Select file", command=self._open_file).pack()
 
         # speed scaler
-        speed_scale = tk.Scale(
+        self.speed_scale = tk.Scale(
             orient="horizontal",
-            from_=1.00,
+            from_=0.5,
             to=3.00,
             resolution=0.25,
-            tickinterval=1,
+            tickinterval=0.5,
             digits=3,
             length=100,
-            label="Speed"
+            label="Speed",
+            command=self._update_speed_rate,
         )
-        speed_scale.pack(fill="x", pady=5)
+        self.speed_scale.set(self._current_speed)
+        self.speed_scale.pack(fill="x", pady=5)
 
         # vad sensitivity scaler
         vad_scale = tk.Scale(
@@ -78,4 +83,14 @@ class GUI:
         dur = self.player.get_duration()
         pos = self.player.get_pos()
         self.progress_label.config(text=f"{self._format_time(int(pos * dur))} / {self._format_time(dur)}")
-        self.root.after(500, self._update_progress)
+
+        self.root.after(200, self._update_progress)
+
+    def _update_speed_rate(self, value):
+        new_speed = float(value)
+
+        if abs(new_speed - self._current_speed) > 0.1:
+            self.player.set_speed_rate(new_speed)
+            self._current_speed = new_speed
+
+    
