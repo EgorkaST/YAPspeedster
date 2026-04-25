@@ -22,10 +22,10 @@ class Player:
         self.player.stop()
 
     def get_pos(self) -> float:
-        return self.player.position()
+        return self.player.get_position()
 
     def get_duration(self) -> int:
-        return max(0, self.player.duration())
+        return max(0, self.player.get_length())
 
     def is_playing(self) -> bool:
         return self.player.get_state() == vlc.State.Playing

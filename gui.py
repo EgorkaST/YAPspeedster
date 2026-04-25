@@ -47,11 +47,16 @@ class GUI:
         )
         vad_scale.pack(fill="x", pady=5)
 
+        self.progress_label = tk.Label(root, text="--:-- / --:--")
+        self.progress_label.pack(pady=10)
+
         btn_frame = tk.Frame(self.root)
         btn_frame.pack()
-        tk.Button(btn_frame, text="play", command=self.player.play, width=8).pack()
-        tk.Button(btn_frame, text="pause", command=self.player.pause, width=8).pack()
-        tk.Button(btn_frame, text="stop", command=self.player.stop, width=8).pack()
+        tk.Button(btn_frame, text="play", command=self.player.play, width=8).pack(side="left", padx=5)
+        tk.Button(btn_frame, text="pause", command=self.player.pause, width=8).pack(side="left", padx=5)
+        tk.Button(btn_frame, text="stop", command=self.player.stop, width=8).pack(side="left", padx=5)
+
+        self._update_progress()
 
     def _open_file(self):
         self.txt_path.config(state="normal")
@@ -63,3 +68,14 @@ class GUI:
 
         self.txt_path.config(state="readonly")
         self.player.load(audio_filepath)
+
+    def _format_time(self, ms: int) -> str:
+        if ms <= 0: return "--:--"
+        m, s = divmod(ms // 1000, 60)
+        return f"{m:02d}:{s:02d}"
+
+    def _update_progress(self):
+        dur = self.player.get_duration()
+        pos = self.player.get_pos()
+        self.progress_label.config(text=f"{self._format_time(int(pos * dur))} / {self._format_time(dur)}")
+        self.root.after(500, self._update_progress)
