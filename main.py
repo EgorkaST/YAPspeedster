@@ -1,8 +1,10 @@
-from gui import create_gui
+from gui import GUI
+import tkinter as tk
 
-def print_hi(name):
-    print(f'Hi, {name}')
+def main():
+    root = tk.Tk()
+    gui = GUI(root)
+    root.mainloop()
 
 if __name__ == '__main__':
-    create_gui()
-    print_hi('PyCharm')
+    main()

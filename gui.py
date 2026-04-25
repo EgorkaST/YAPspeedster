@@ -1,52 +1,65 @@
-import tkinter
-from tkinter import *
+import tkinter as tk
 from tkinter import filedialog
+from player import Player
 
-def create_gui():
-    # Main window of GUI
-    root = Tk()
-    root.title("YUP speedster")
-    root.geometry("500x300")
+class GUI:
+    def __init__(self, root):
 
-    # speed scaler
-    speed_scale = Scale(
-        orient="horizontal",
-        from_=1.00,
-        to=3.00,
-        resolution= 0.25,
-        tickinterval= 1,
-        digits= 3,
-        length= 100,
-        label= "Speed"
-    )
-    speed_scale.pack(fill="x")
+        #main window
+        self.root = root
+        self.root.title("YUP speedster")
+        self.root.geometry("500x400")
 
-    # vad level scaler
-    vad_scale = Scale(
-        orient="horizontal",
-        from_=1.00,
-        to=3.00,
-        resolution= 0.25,
-        tickinterval= 1,
-        digits= 3,
-        length= 100,
-        label= "VAD scale"
-    )
-    vad_scale.pack(fill="x")
+        #player integration
+        self.player = Player()
 
-    file_path_desc = Label(root, text="File Path")
-    file_path_desc.pack()
+        # ui label
+        tk.Label(root, text="File Path").pack()
 
-    txt_path = Entry(root, width=200)
-    txt_path.pack()
+        self.txt_path = tk.Entry(root, width=200, state="readonly")
+        self.txt_path.pack()
 
-    def open_file(entry_field):
-        audio_filepath = filedialog.askopenfilename()
-        entry_field.delete(0, tkinter.END)
-        entry_field.insert(0, audio_filepath)
+        tk.Button(root, text="Select file", command=self._open_file).pack()
 
-    button_get_path = Button(root, text="Select file", command=lambda: open_file(txt_path))
-    button_get_path.pack()
+        # speed scaler
+        speed_scale = tk.Scale(
+            orient="horizontal",
+            from_=1.00,
+            to=3.00,
+            resolution=0.25,
+            tickinterval=1,
+            digits=3,
+            length=100,
+            label="Speed"
+        )
+        speed_scale.pack(fill="x", pady=5)
 
-    root.mainloop()
-    return root
+        # vad sensitivity scaler
+        vad_scale = tk.Scale(
+            orient="horizontal",
+            from_=1.00,
+            to=3.00,
+            resolution=0.25,
+            tickinterval=1,
+            digits=3,
+            length=100,
+            label="VAD sensitivity"
+        )
+        vad_scale.pack(fill="x", pady=5)
+
+        btn_frame = tk.Frame(self.root)
+        btn_frame.pack()
+        tk.Button(btn_frame, text="play", command=self.player.play, width=8).pack()
+        tk.Button(btn_frame, text="pause", command=self.player.pause, width=8).pack()
+        tk.Button(btn_frame, text="stop", command=self.player.stop, width=8).pack()
+
+    def _open_file(self):
+        self.txt_path.config(state="normal")
+
+        audio_filepath = filedialog.askopenfilename(title="Select file")
+        if audio_filepath:
+            self.txt_path.delete(0, tk.END)
+            self.txt_path.insert(0, audio_filepath)
+
+        self.txt_path.config(state="readonly")
+        self.player.load(audio_filepath)
