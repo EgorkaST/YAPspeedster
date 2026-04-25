@@ -7,7 +7,8 @@ SAMPLING_RATE = 16000
 
 def GetSpeechTimestamps(
         file_path,
-        in_seconds = False
+        in_seconds = False,
+        VAD_sensetivity = 0.5,
 ):
 
     # Load model
@@ -32,7 +33,7 @@ def GetSpeechTimestamps(
     speechTimestamps = get_speech_timestamps(
         preparedAudio, model,
         sampling_rate=SAMPLING_RATE,
-        threshold=0.5,
+        threshold=VAD_sensetivity,
         min_speech_duration_ms=250,
         min_silence_duration_ms=100,
         return_seconds = in_seconds,
