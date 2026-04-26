@@ -33,3 +33,16 @@ class Player:
     def set_speed_rate(self, rate: float):
         rate = max(0, min(3.0, rate))
         self.player.set_rate(rate)
+
+    def set_time(self, ms: int):
+        if ms < 0:
+            ms = 0
+
+        dur = self.get_duration()
+        if 0 < dur < ms:
+            ms = dur
+
+        self.player.set_time(ms)
+
+    def get_time(self) -> int:
+        return self.player.get_time()

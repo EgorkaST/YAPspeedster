@@ -17,6 +17,7 @@ class VADAudioController:
         self.VAD_sensetivity = VAD_sensetivity
         self.timestampsQueue = queue.Queue() #queue needed for safe communication between threads
         self.timestamps = []
+        # self._stop_event = threading.Event()
 
         self.seconds_processed = 0
         self.audio_length = len(self.audio) / self.SAMPLING_RATE
@@ -38,7 +39,7 @@ class VADAudioController:
 
     # this runs alongside player in another thread and processes audio chunk. by. chunk!
     def VAD_processor(self):
-        while (self.seconds_processed < self.audio_length:):
+        while self.seconds_processed < self.audio_length:
             #defy start and end of the chunk in seconds
             chunk_start = self.seconds_processed
             chunk_end = min(chunk_start+self.CHUNK_SIZE,self.audio_length)
@@ -55,7 +56,7 @@ class VADAudioController:
                 threshold = self.VAD_sensetivity,
                 sampling_rate=self.SAMPLING_RATE,
                 min_speech_duration_ms=250,
-                min_silence_duration_ms=100,
+                min_silence_duration_ms=1000,
                 return_seconds=True
             )
             # adjust time and put timestamps into queue
@@ -97,3 +98,11 @@ class VADAudioController:
         # start VAD thread
         vad_thread = threading.Thread(target=self.VAD_processor, daemon=True)
         vad_thread.start()
+
+    # def stop(self):
+    #     self._stop_event.set()
+    #     while not self.timestampsQueue.empty():
+    #         try: self.timestampsQueue.get_nowait()
+    #         except queue.Empty: break
+    #     self.timestamps.clear()
+    #     self.seconds_processed = 0.0
