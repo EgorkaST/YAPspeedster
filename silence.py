@@ -1,9 +1,11 @@
 import torch
 import torchaudio
 import soundfile as sf
-from silero_vad import load_silero_vad, read_audio, get_speech_timestamps
+from silero_vad import load_silero_vad, get_speech_timestamps
 
 SAMPLING_RATE = 16000
+
+
 
 def GetSpeechTimestamps(
         file_path,
