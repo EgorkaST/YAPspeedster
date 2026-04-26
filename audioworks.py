@@ -1,4 +1,3 @@
-import ffmpeg
 from silence import GetSpeechTimestamps
 import ffmpeg
 import os
