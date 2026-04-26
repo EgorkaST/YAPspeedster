@@ -13,10 +13,12 @@ class VADAudioController:
     SAMPLING_RATE = 16000 # sample rate needed for correct silero_vad work
     CHUNK_SIZE = 20 # how many seconds will VAD process in one iteration
 
-    def __init__(self, audio_path, VAD_sensetivity = 0.5): # constructor
+    def __init__(self, audio_path, VAD_sensetivity = 0.5, min_speech_duration_ms = 250, min_silence_duration_ms = 1000): # constructor
         self.audio_path = audio_path
         #self.audio = self.prepare_audio()
         self.VAD_model = load_silero_vad()
+        self.min_speech_duration_ms = min_speech_duration_ms
+        self.min_silence_duration_ms = min_silence_duration_ms
         self.VAD_sensetivity = VAD_sensetivity
         self.timestampsQueue = queue.Queue() #queue needed for safe communication between threads
         self.timestamps = []
@@ -58,8 +60,8 @@ class VADAudioController:
                 model=self.VAD_model,
                 threshold=self.VAD_sensetivity,
                 sampling_rate=self.SAMPLING_RATE,
-                min_speech_duration_ms=250,
-                min_silence_duration_ms=1000,
+                min_speech_duration_ms=self.min_speech_duration_ms,
+                min_silence_duration_ms=self.min_silence_duration_ms,
                 return_seconds=True
             )
 

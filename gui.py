@@ -5,6 +5,8 @@ from VADAudioController import VADAudioController
 from player import Player
 from pathlib import Path
 import threading
+from PIL import Image, ImageTk
+
 
 class GUI:
     def __init__(self, root):
@@ -12,7 +14,8 @@ class GUI:
         #main window
         self.root = root
         self.root.title("YUP speedster")
-        self.root.geometry("600x450")
+        #ТУТ ИЗМЕНИТЬ ВСЕ ОКНО!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        self.root.geometry("600x600")
 
         # const
         self._current_speed = 1.0
@@ -23,6 +26,15 @@ class GUI:
         # integration
         self.player = Player()
         self.vad_controller = None
+
+        # ТУТ ИЗМЕНИТЬ КАРТИНКУ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        img = Image.open("C:/Users/Alena/Documents/GitHub/YAPspeedster/meow.jpg")
+        photo = ImageTk.PhotoImage(img)
+
+        # ТУТ ИЗМЕНИТЬ КАРТИНКУ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        label = tk.Label(self.root, image=photo, width=580, height=200)
+        label.image = photo
+        label.pack()
 
         # ui label
         tk.Label(root, text="File Path").pack()
@@ -47,20 +59,6 @@ class GUI:
         self.speed_scale.set(self._current_speed)
         self.speed_scale.pack(fill="x",padx=20, pady=5)
 
-        # vad sensitivity scaler
-        self.vad_scale = tk.Scale(
-            orient="horizontal",
-            from_=0.1,
-            to=0.9,
-            resolution=0.1,
-            tickinterval=0.2,
-            digits=2,
-            length=100,
-            label="VAD sensitivity (SET BEFORE SELECTING FILE)"
-        )
-        self.vad_scale.set(0.5)
-        self.vad_scale.pack(fill="x", padx=20, pady=5)
-
         self.progress_label = tk.Label(root, text="--:-- / --:--")
         self.progress_label.pack(pady=0)
 
@@ -83,6 +81,43 @@ class GUI:
         tk.Button(btn_frame, text="stop", command=self.player.stop, width=8).pack(side="left", padx=5)
 
         tk.Checkbutton(self.root, text="Silence auto skip", variable=self._is_auto_skip_enabled).pack(padx=20, pady=5)
+
+        tk.Label(root, text="SETTINGS BELOW, (SET BEFORE SELECTING FILE)").pack(padx=20, pady=5)
+
+        # vad sensitivity scaler
+        self.vad_scale = tk.Scale(
+            orient="horizontal",
+            from_=0.1,
+            to=0.9,
+            resolution=0.1,
+            tickinterval=0.2,
+            digits=2,
+            length=100,
+            label="VAD sensitivity"
+        )
+        self.vad_scale.set(0.5)
+        self.vad_scale.pack(fill="x", padx=20, pady=5)
+
+        tk.Label(root, text="Min speech duration").pack(anchor="w", padx=20)
+        self.min_speech_var = tk.IntVar(value=250)
+        self.min_speech_scale = tk.Scale(
+            root, variable=self.min_speech_var,
+            from_=250, to=2000, resolution=50,
+            orient="horizontal", length=200,
+            tickinterval=250,
+        )
+        self.min_speech_scale.pack(fill="x", padx=20, pady=2)
+
+        tk.Label(root, text="Min silence duration").pack(anchor="w", padx=20)
+        self.min_silence_var = tk.IntVar(value=1000)
+        self.min_silence_scale = tk.Scale(
+            root, variable=self.min_silence_var,
+            from_=200, to=3000, resolution=100,
+            orient="horizontal", length=200,
+            tickinterval= 400
+        )
+        self.min_silence_scale.pack(fill="x", padx=20, pady=2)
+
         tk.Button(self.root, text="download chopped file", width= 25, command=self._start_download).pack(side="left", padx=20)
 
         self.status_label = tk.Label(root, text="", fg="gray")
@@ -109,7 +144,7 @@ class GUI:
         self.seek_scale.config(state="normal")
 
         self.txt_path.config(state="readonly")
-        self.vad_controller = VADAudioController(audio_path=audio_filepath, VAD_sensetivity=self.vad_scale.get())
+        self.vad_controller = VADAudioController(audio_path=audio_filepath, VAD_sensetivity=self.vad_scale.get(), min_speech_duration_ms=self.min_speech_scale.get(), min_silence_duration_ms=self.min_silence_scale.get())
         self.vad_controller.start()
         self.player.load(audio_filepath)
 
@@ -135,6 +170,11 @@ class GUI:
             not self._is_user_seeking and
             dur > 0 and
             self.vad_controller.seconds_processed > current_s):
+
+            progress = (self.vad_controller.seconds_processed /
+                        max(0.1, self.vad_controller.audio_length) * 100)
+            self.root.after(0, lambda p=progress:
+            self.status_label.config(text=f"Loading: {p:.0f}%"))
 
             if self.vad_controller.in_silence_chunk(current_s):
                 next_s = self.vad_controller.find_next_speech(current_s) - 0.8
