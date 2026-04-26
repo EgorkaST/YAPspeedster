@@ -32,7 +32,7 @@ class GUI:
         photo = ImageTk.PhotoImage(img)
 
         # ТУТ ИЗМЕНИТЬ КАРТИНКУ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        label = tk.Label(self.root, image=photo, width=580, height=200)
+        label = tk.Label(self.root, image=photo, width=580, height=500)
         label.image = photo
         label.pack()
 
@@ -256,7 +256,7 @@ class GUI:
                 self.root.after(0, lambda p=progress:
                     self.status_label.config(text=f"Loading: {p:.0f}%"))
 
-            self.vad_controller.downloadChoppedAudio(save_path)
+            self.vad_controller.downloadChoppedAudio(save_path, self.speed_scale.get())
             self.root.after(0, lambda: self._on_download_success(save_path))
         except Exception as e:
             self.root.after(0, lambda: self._on_download_error(str(e)))
