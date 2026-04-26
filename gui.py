@@ -1,8 +1,10 @@
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 
 from VADAudioController import VADAudioController
 from player import Player
+from pathlib import Path
+import threading
 
 class GUI:
     def __init__(self, root):
@@ -10,7 +12,7 @@ class GUI:
         #main window
         self.root = root
         self.root.title("YUP speedster")
-        self.root.geometry("500x450")
+        self.root.geometry("600x450")
 
         # const
         self._current_speed = 1.0
@@ -54,7 +56,7 @@ class GUI:
             tickinterval=0.2,
             digits=2,
             length=100,
-            label="VAD sensitivity"
+            label="VAD sensitivity (SET BEFORE SELECTING FILE)"
         )
         self.vad_scale.set(0.5)
         self.vad_scale.pack(fill="x", padx=20, pady=5)
@@ -80,8 +82,14 @@ class GUI:
         tk.Button(btn_frame, text="pause", command=self.player.pause, width=8).pack(side="left", padx=5)
         tk.Button(btn_frame, text="stop", command=self.player.stop, width=8).pack(side="left", padx=5)
 
-        tk.Checkbutton(self.root, text="Silence auto skip", variable=self._is_auto_skip_enabled).pack(anchor="w", padx=20, pady=5)
-        tk.Button(self.root, text="download", width= 12).pack(side="left", padx=20)
+        tk.Checkbutton(self.root, text="Silence auto skip", variable=self._is_auto_skip_enabled).pack(padx=20, pady=5)
+        tk.Button(self.root, text="download chopped file", width= 25, command=self._start_download).pack(side="left", padx=20)
+
+        self.status_label = tk.Label(root, text="", fg="gray")
+        self.status_label.pack(pady=2, side="left", padx=20)
+
+        self.how_much_second_chopped = tk.Label(root, text="", fg="green")
+        self.how_much_second_chopped.pack(pady=2, side="left", padx=5)
 
         self._update_progress()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -93,6 +101,9 @@ class GUI:
         if audio_filepath:
             self.txt_path.delete(0, tk.END)
             self.txt_path.insert(0, audio_filepath)
+        else:
+            self.txt_path.config(state="readonly")
+            return
 
         self.seek_var.set(0.0)
         self.seek_scale.config(state="normal")
@@ -164,4 +175,49 @@ class GUI:
 
         self.root.after(300, lambda: setattr(self, '_is_user_seeking', False))
 
-    
+    def _start_download(self):
+        if not self.txt_path.get():
+            messagebox.showwarning("Error", "Choose audiofile first!")
+            return
+        if not self.vad_controller:
+            messagebox.showerror("Error", "VAD-controller doesnt initialized")
+            return
+
+        save_path = filedialog.asksaveasfilename(
+            title="Save chopped file",
+            defaultextension=".wav",
+            filetypes=[("WAV", "*.wav"), ("MP3", "*.mp3"), ("All", "*.*")],
+            initialfile=f"{Path(self.txt_path.get()).stem}_processed.wav"
+        )
+        if not save_path:
+            return
+
+        threading.Thread(
+            target=self._download_task,
+            args=(save_path,),
+            daemon=True
+        ).start()
+
+    def _on_download_success(self, path: str):
+        self.status_label.config(text=f"Saved: {Path(path).name}", fg="green")
+        self.root.after(250, self.how_much_second_chopped.config(
+            text=f"{int(self.vad_controller.seconds_skipped)} Seconds skipped"))
+
+    def _on_download_error(self, error_msg: str):
+        self.status_label.config(text=f"Error", fg="red")
+        messagebox.showerror("Save error", f"Can't save file:\n{error_msg}")
+
+    def _download_task(self, save_path):
+        try:
+            while self.vad_controller.seconds_processed < self.vad_controller.audio_length:
+                # Обновляем статус с прогрессом
+                progress = (self.vad_controller.seconds_processed /
+                           max(0.1, self.vad_controller.audio_length) * 100)
+                self.root.after(0, lambda p=progress:
+                    self.status_label.config(text=f"Loading: {p:.0f}%"))
+
+            self.vad_controller.downloadChoppedAudio(save_path)
+            self.root.after(0, lambda: self._on_download_success(save_path))
+        except Exception as e:
+            self.root.after(0, lambda: self._on_download_error(str(e)))
+
