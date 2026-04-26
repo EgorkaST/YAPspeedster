@@ -1,7 +1,5 @@
-from silence import GetSpeechTimestamps
 import ffmpeg
 import os
-import tempfile
 
 def getSilenceRemoved(
     input_path,
@@ -9,10 +7,8 @@ def getSilenceRemoved(
     speech_timestamps=[],
     speed_multiplier=1,
 ):
-    if speech_timestamps == []:
-        speech_timestamps = GetSpeechTimestamps(file_path=input_path, in_seconds=True)
-
     temp_files = []
+    list_path = 'temp_list.txt'
 
     try:
         # save each segment as a temp file
@@ -32,10 +28,10 @@ def getSilenceRemoved(
             stream.output(temp_path).overwrite_output().run(quiet=True)
 
         # write a list file for ffmpeg concat
-        list_path = 'temp_list.txt'
         with open(list_path, 'w') as f:
             for temp_path in temp_files:
-                f.write(f"file '{os.path.abspath(temp_path)}'\n")
+                abs_path = os.path.abspath(temp_path).replace('\\', '/')
+                f.write(f"file '{abs_path}'\n")
 
         # concatenate all temp files
         (
@@ -43,7 +39,7 @@ def getSilenceRemoved(
             .input(list_path, format='concat', safe=0)
             .output(save_path)
             .overwrite_output()
-            .run(quiet=True)
+            .run()
         )
 
     finally:
@@ -53,9 +49,3 @@ def getSilenceRemoved(
                 os.remove(temp_path)
         if os.path.exists(list_path):
             os.remove(list_path)
-
-getSilenceRemoved(
-    input_path = 'gaigulian.wav',
-    save_path = 'sped-up.wav',
-    speed_multiplier = 2,
-)
