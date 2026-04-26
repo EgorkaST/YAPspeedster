@@ -10,19 +10,23 @@ class GUI:
         #main window
         self.root = root
         self.root.title("YUP speedster")
-        self.root.geometry("500x400")
+        self.root.geometry("500x450")
 
         # const
         self._current_speed = 1.0
+        self._is_auto_skip_enabled = tk.BooleanVar(value=True)
+        self._is_user_seeking = False
+        self._is_auto_seeking = False
 
-        #player integration
+        # integration
         self.player = Player()
+        self.vad_controller = None
 
         # ui label
         tk.Label(root, text="File Path").pack()
 
         self.txt_path = tk.Entry(root, width=200, state="readonly")
-        self.txt_path.pack()
+        self.txt_path.pack(padx=20, fill="x")
 
         tk.Button(root, text="Select file", command=self._open_file).pack()
 
@@ -39,7 +43,7 @@ class GUI:
             command=self._update_speed_rate,
         )
         self.speed_scale.set(self._current_speed)
-        self.speed_scale.pack(fill="x", pady=5)
+        self.speed_scale.pack(fill="x",padx=20, pady=5)
 
         # vad sensitivity scaler
         self.vad_scale = tk.Scale(
@@ -53,10 +57,22 @@ class GUI:
             label="VAD sensitivity"
         )
         self.vad_scale.set(0.5)
-        self.vad_scale.pack(fill="x", pady=5)
+        self.vad_scale.pack(fill="x", padx=20, pady=5)
 
         self.progress_label = tk.Label(root, text="--:-- / --:--")
-        self.progress_label.pack(pady=10)
+        self.progress_label.pack(pady=0)
+
+        self.seek_var = tk.DoubleVar(value=0.0)
+        self.seek_scale = tk.Scale(
+            root,
+            from_=0.0, to=1.0, resolution=0.001,
+            orient="horizontal",
+            variable=self.seek_var,
+            command=self._on_seek,
+            state="disabled",
+            showvalue=False,
+        )
+        self.seek_scale.pack(fill="x", padx=20, pady=8)
 
         btn_frame = tk.Frame(self.root)
         btn_frame.pack()
@@ -64,11 +80,8 @@ class GUI:
         tk.Button(btn_frame, text="pause", command=self.player.pause, width=8).pack(side="left", padx=5)
         tk.Button(btn_frame, text="stop", command=self.player.stop, width=8).pack(side="left", padx=5)
 
-        self.vad_controller = None
-        self._is_auto_skip_enabled = tk.BooleanVar(value=True)
-        self._is_seeking = False
-
         tk.Checkbutton(self.root, text="Silence auto skip", variable=self._is_auto_skip_enabled).pack(anchor="w", padx=20, pady=5)
+        tk.Button(self.root, text="download", width= 12).pack(side="left", padx=20)
 
         self._update_progress()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -80,6 +93,9 @@ class GUI:
         if audio_filepath:
             self.txt_path.delete(0, tk.END)
             self.txt_path.insert(0, audio_filepath)
+
+        self.seek_var.set(0.0)
+        self.seek_scale.config(state="normal")
 
         self.txt_path.config(state="readonly")
         self.vad_controller = VADAudioController(audio_path=audio_filepath, VAD_sensetivity=self.vad_scale.get())
@@ -97,15 +113,26 @@ class GUI:
         current_ms = self.player.get_time()
         current_s = current_ms / 1000
 
-        if (self._is_auto_skip_enabled.get() and self.vad_controller and not self._is_seeking and dur > 0 and self.vad_controller.seconds_processed > current_s):
+        if dur > 0 and not self._is_user_seeking:
+            pos_ratio = current_ms / dur
+            self.seek_var.set(pos_ratio)
+            self.seek_scale.config(state="normal")
+
+        if (self._is_auto_skip_enabled.get() and
+            self.vad_controller and
+            not self._is_auto_seeking and
+            not self._is_user_seeking and
+            dur > 0 and
+            self.vad_controller.seconds_processed > current_s):
+
             if self.vad_controller.in_silence_chunk(current_s):
-                next_s = self.vad_controller.find_next_speech(current_s) - 0.75
+                next_s = self.vad_controller.find_next_speech(current_s) - 0.8
 
                 if next_s > current_s:
-                    self._is_seeking = True
+                    self._is_auto_seeking = True
                     self.player.set_time(int(next_s * 1000))
-                    print(f"SKIP")
-                    self.root.after(400, lambda: setattr(self, '_is_seeking', False))
+                    print(f"SKIP: {current_s:.1f}s → {next_s:.1f}s")
+                    self.root.after(400, lambda: setattr(self, '_is_auto_seeking', False))
 
         self.progress_label.config(text=f"{self._format_time(int(pos * dur))} / {self._format_time(dur)}")
 
@@ -122,5 +149,19 @@ class GUI:
         self.player.stop()
         self.root.destroy()
         print("DESTROYED")
+
+    def _on_seek(self, value: str):
+        self._is_user_seeking = True
+
+        try:
+            pos_ratio = float(value)
+            dur = self.player.get_duration()
+            if dur > 0:
+                target_ms = int(pos_ratio * dur)
+                self.player.set_time(target_ms)
+        except Exception as e:
+            print(f"Seek error: {e}")
+
+        self.root.after(300, lambda: setattr(self, '_is_user_seeking', False))
 
     

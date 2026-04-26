@@ -27,9 +27,6 @@ class Player:
     def get_duration(self) -> int:
         return max(0, self.player.get_length())
 
-    def is_playing(self) -> bool:
-        return self.player.get_state() == vlc.State.Playing
-
     def set_speed_rate(self, rate: float):
         rate = max(0, min(3.0, rate))
         self.player.set_rate(rate)
@@ -46,3 +43,9 @@ class Player:
 
     def get_time(self) -> int:
         return self.player.get_time()
+
+    def disable(self):
+        self.player.set_state(vlc.State.Stopped)
+
+    def enable(self):
+        self.player.set_state(vlc.State.Playing)
