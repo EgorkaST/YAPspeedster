@@ -7,15 +7,21 @@ from pathlib import Path
 import threading
 from PIL import Image, ImageTk
 
+import sys
+import os
+
+def resource_path(filename):
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, filename)
+    return filename
 
 class GUI:
     def __init__(self, root):
 
         #main window
         self.root = root
-        self.root.title("YUP speedster")
-        #ТУТ ИЗМЕНИТЬ ВСЕ ОКНО!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        self.root.geometry("600x600")
+        self.root.title("YUP Accilirator")
+        self.root.geometry("600x840")
 
         # const
         self._current_speed = 1.0
@@ -27,11 +33,9 @@ class GUI:
         self.player = Player()
         self.vad_controller = None
 
-        # ТУТ ИЗМЕНИТЬ КАРТИНКУ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        img = Image.open("C:/Users/Alena/Documents/GitHub/YAPspeedster/meow.jpg")
+        img = Image.open(resource_path('meow.jpg'))
         photo = ImageTk.PhotoImage(img)
 
-        # ТУТ ИЗМЕНИТЬ КАРТИНКУ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         label = tk.Label(self.root, image=photo, width=580, height=200)
         label.image = photo
         label.pack()
