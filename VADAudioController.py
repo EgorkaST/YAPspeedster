@@ -76,6 +76,14 @@ class VADAudioController:
 
     def drainTimestampQueue(self):
         while not self.timestampsQueue.empty():
+            ts = self.timestampsQueue.get()
+
+            # calculate silence gap between previous speech end and this speech start
+            if self.timestamps:
+                silence_gap = ts['start'] - self.timestamps[-1]['end']
+                if silence_gap > 0:
+                    self.seconds_skipped += silence_gap
+
             self.timestamps.append(self.timestampsQueue.get())
 
     # returns TRUE if time is in silence chunk and player should skip
