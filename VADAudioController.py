@@ -39,7 +39,7 @@ class VADAudioController:
 
     # this runs alongside player in another thread and processes audio chunk. by. chunk!
     def VAD_processor(self):
-        while self.seconds_processed < self.audio_length and not self._stop_event.is_set():
+        while self.seconds_processed < self.audio_length:
             #defy start and end of the chunk in seconds
             chunk_start = self.seconds_processed
             chunk_end = min(chunk_start+self.CHUNK_SIZE,self.audio_length)
