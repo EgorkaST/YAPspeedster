@@ -6,6 +6,7 @@ import threading
 import queue
 import time
 import librosa
+import numpy
 
 #need to create class for new audio, i need to make method for starting new track but i wanna eep <3
 class VADAudioController:
@@ -131,9 +132,9 @@ class VADAudioController:
                 librosa.effects.time_stretch(channel, rate=speed_modifier)
                 for channel in audio_np
             ]
-            chopped_audio = torch.from_numpy(np.stack(stretched_channels))
+            chopped_audio = torch.from_numpy(numpy.stack(stretched_channels))
         #saving
-        torchaudio.save(save_path, chopped_audio, original_sr)
+        torchaudio.save(save_path, chopped_audio, original_samplerate)
 
 
     # def stop(self):
