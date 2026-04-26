@@ -260,7 +260,7 @@ class GUI:
                 self.root.after(0, lambda p=progress:
                     self.status_label.config(text=f"Loading: {p:.0f}%"))
 
-            self.vad_controller.downloadChoppedAudio(save_path)
+            self.vad_controller.downloadChoppedAudio(save_path, self.speed_scale.get())
             self.root.after(0, lambda: self._on_download_success(save_path))
         except Exception as e:
             self.root.after(0, lambda: self._on_download_error(str(e)))
