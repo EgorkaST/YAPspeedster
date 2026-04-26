@@ -4,6 +4,8 @@ import torchaudio
 import soundfile
 import threading
 import queue
+import time
+import librosa
 
 #need to create class for new audio, i need to make method for starting new track but i wanna eep <3
 class VADAudioController:
@@ -12,15 +14,16 @@ class VADAudioController:
 
     def __init__(self, audio_path, VAD_sensetivity = 0.5): # constructor
         self.audio_path = audio_path
-        self.audio = self.prepare_audio()
+        #self.audio = self.prepare_audio()
         self.VAD_model = load_silero_vad()
         self.VAD_sensetivity = VAD_sensetivity
         self.timestampsQueue = queue.Queue() #queue needed for safe communication between threads
         self.timestamps = []
+        self.seconds_skipped = 0
         # self._stop_event = threading.Event()
 
         self.seconds_processed = 0
-        self.audio_length = len(self.audio) / self.SAMPLING_RATE
+        self.audio_length = 0
 
     #prepares audio for VAD model, beware that quality will be bad and you should use something else for playing ACTUAL audio
     def prepare_audio(self):
@@ -35,10 +38,12 @@ class VADAudioController:
         if samplerate != self.SAMPLING_RATE:
             resampler = torchaudio.transforms.Resample(orig_freq=samplerate, new_freq=self.SAMPLING_RATE)
             prepared_audio = resampler(prepared_audio)
+        self.audio_length = len(self.audio) / self.SAMPLING_RATE
         return prepared_audio
 
     # this runs alongside player in another thread and processes audio chunk. by. chunk!
     def VAD_processor(self):
+        audio = self.prepare_audio()
         while self.seconds_processed < self.audio_length:
             #defy start and end of the chunk in seconds
             chunk_start = self.seconds_processed
@@ -47,7 +52,7 @@ class VADAudioController:
             start_sample = int(chunk_start * self.SAMPLING_RATE)
             end_sample = int(chunk_end * self.SAMPLING_RATE)
             # extract chunk
-            chunk = self.audio[start_sample:end_sample]
+            chunk = audio[start_sample:end_sample]
 
             # run VAD on chunk
             chunk_timestamps = get_speech_timestamps(
@@ -68,11 +73,14 @@ class VADAudioController:
 
             self.seconds_processed = chunk_end
 
+    def drainTimestampQueue(self):
+        while not self.timestampsQueue.empty():
+            self.timestamps.append(self.timestampsQueue.get())
+
     # returns TRUE if time is in silence chunk and player should skip
     def in_silence_chunk(self, time):
         # drain queue into list of timestamps
-        while not self.timestampsQueue.empty():
-            self.timestamps.append(self.timestampsQueue.get())
+        self.drainTimestampQueue()
 
         # check if position falls inside any speech segment
         for ts in self.timestamps:
@@ -98,6 +106,35 @@ class VADAudioController:
         # start VAD thread
         vad_thread = threading.Thread(target=self.VAD_processor, daemon=True)
         vad_thread.start()
+
+    def downloadChoppedAudio(self, save_path, speed_modifier = 1.0):
+        # wait for VAD to finish processing entire audio
+        while self.seconds_processed < self.audio_length:
+            time.sleep(0.1)
+        # draining remaning timestamps from queue
+        self.drainTimestampQueue()
+        # loading audio in original quality
+        original_audio, original_samplerate = torchaudio.load(self.audio_path)
+
+        # preparing chunks of audio
+        speech_chunks = []
+        for ts in self.timestamps:
+            start_sample = int(ts['start'] * original_samplerate)
+            end_sample = int(ts['end'] * original_samplerate)
+            speech_chunks.append(original_audio[:, start_sample:end_sample])
+        # gluing all of it together
+        chopped_audio = torch.cat(speech_chunks, dim=1)
+        #speeding up if needed
+        if speed_modifier != 1.0:
+            audio_np = chopped_audio.numpy()
+            stretched_channels = [
+                librosa.effects.time_stretch(channel, rate=speed_modifier)
+                for channel in audio_np
+            ]
+            chopped_audio = torch.from_numpy(np.stack(stretched_channels))
+        #saving
+        torchaudio.save(save_path, chopped_audio, original_sr)
+
 
     # def stop(self):
     #     self._stop_event.set()
